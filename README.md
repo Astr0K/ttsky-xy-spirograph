@@ -1,42 +1,38 @@
-![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
-
-# Tiny Tapeout Verilog Project Template
-
-- [Read the documentation for project](docs/info.md)
-
-## What is Tiny Tapeout?
-
-Tiny Tapeout is an educational project that aims to make it easier and cheaper than ever to get your digital and analog designs manufactured on a real chip.
-
-To learn more and get started, visit https://tinytapeout.com.
-
-## Set up your Verilog project
-
-1. Add your Verilog files to the `src` folder.
-2. Edit the [info.yaml](info.yaml) and update information about your project, paying special attention to the `source_files` and `top_module` properties. If you are upgrading an existing Tiny Tapeout project, check out our [online info.yaml migration tool](https://tinytapeout.github.io/tt-yaml-upgrade-tool/).
-3. Edit [docs/info.md](docs/info.md) and add a description of your project.
-4. Adapt the testbench to your design. See [test/README.md](test/README.md) for more information.
-
-The GitHub action will automatically build the ASIC files using [LibreLane](https://www.zerotoasiccourse.com/terminology/librelane/).
-
-## Enable GitHub actions to build the results page
-
-- [Enabling GitHub Pages](https://tinytapeout.com/faq/#my-github-action-is-failing-on-the-pages-part)
-
-## Resources
-
-- [FAQ](https://tinytapeout.com/faq/)
-- [Digital design lessons](https://tinytapeout.com/digital_design/)
-- [Learn how semiconductors work](https://tinytapeout.com/siliwiz/)
-- [Join the community](https://tinytapeout.com/discord)
-- [Build your design locally](https://www.tinytapeout.com/guides/local-hardening/)
-
-## What next?
-
-- [Submit your design to the next shuttle](https://app.tinytapeout.com/).
-- Edit [this README](README.md) and explain your design, how it works, and how to test it.
-- Share your project on your social network of choice:
-  - LinkedIn [#tinytapeout](https://www.linkedin.com/search/results/content/?keywords=%23tinytapeout) [@TinyTapeout](https://www.linkedin.com/company/100708654/)
-  - Mastodon [#tinytapeout](https://chaos.social/tags/tinytapeout) [@matthewvenn](https://chaos.social/@matthewvenn)
-  - X (formerly Twitter) [#tinytapeout](https://twitter.com/hashtag/tinytapeout) [@tinytapeout](https://twitter.com/tinytapeout)
-  - Bluesky [@tinytapeout.com](https://bsky.app/profile/tinytapeout.com)
+XY Spirograph
+A four-pattern vector display for the Tiny Tapeout micro interface. The RTL in
+src/project.v is synthesizable Verilog. Copy it into the Verilog micro-tile
+template and set these fields under project in info.yaml:
+```yaml
+tiles: "micro"
+top\_module: "tt\_um\_xy\_spirograph"
+source\_files:
+  - "project.v"
+```
+Drive clk at 64 kHz for 1000 repetitions per second. Hold rst_n low across a
+rising edge to reset both axes to code 8. Select the pattern with ui_in[1:0].
+The remaining six inputs are unused. The two-stage input synchronizer allows
+live switching. Changing two switches separately can briefly select another
+pattern.
+Selector	X	Y
+00	Triangle at base frequency	Triangle, quarter-cycle lead
+01	Triangle at base frequency	Triangle at twice base frequency, quarter-cycle lead on Y
+10	Triangle at twice base frequency	Triangle at three times base frequency
+11	Four-point star, 16 coordinate pairs	Same table shifted by four entries
+Connect uo_out[3:0] to a 4-bit R-2R ladder for X (bit 3 is MSB).
+Connect uo_out[7:4] to a second ladder for Y (bit 7 is MSB).
+For each ladder use four nodes from MSB to LSB, an R between adjacent nodes,
+a 2R from each node to its digital pin, and a 2R from the LSB node to ground.
+Read the analog output at the MSB node. Example: R = 10 kOhm, 2R = 20 kOhm.
+Connect X to CH1, Y to CH2, and share board ground with the scope. Use
+high-impedance DC-coupled inputs, XY mode, and equal volts/div on both axes.
+The DACs output discrete points. Persistence helps reveal them; the appearance
+of connecting segments depends on acquisition, analog settling and display mode.
+Simulation
+From this directory, using Verilator with timing support:
+```sh
+verilator --binary --timing -Wno-TIMESCALEMOD --top-module tb src/project.v test/tb.sv
+./obj\_dir/Vtb
+```
+The self-checking test compares three complete 64-clock sweeps per mode to
+reference coordinates, including selector pipeline latency and resets.
+Physical fit and timing require hardening
